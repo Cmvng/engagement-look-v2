@@ -9,7 +9,7 @@ function get(path) {
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
     });
     req.on('error', reject);
     req.end();
@@ -27,9 +27,9 @@ module.exports = async (req, res) => {
   try {
     if (type === 'tweets') {
       const raw = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
-      // API returns tweets in raw.data array
-      const arr = raw.data || raw.tweets || [];
-      const tweets = Array.isArray(arr) ? arr : [];
+      // raw.data is the tweets array directly based on API response
+      // raw_response_keys: ["status","code","msg","data","has_next_page","next_cursor"]
+      const tweets = Array.isArray(raw.data) ? raw.data : [];
       res.status(200).json({ tweets });
     } else {
       const raw = await get(`/twitter/user/info?userName=${encodeURIComponent(username)}`);
