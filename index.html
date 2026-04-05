@@ -232,7 +232,7 @@ function calcScore(d){
 }
 
 async function fetchProfile(u){
-  const r=await fetch(`https://api.twitterapi.io/twitter/user/info?userName=${u}`,{headers:{'X-API-Key':TW_KEY}});
+  const r=await fetch(`/api/twitter?username=${u}&type=profile`);
   if(!r.ok)throw new Error('Could not fetch @'+u+'. Check the username.');
   const d=await r.json();
   if(d.status==='error')throw new Error(d.msg||'User @'+u+' not found');
@@ -247,7 +247,7 @@ async function fetchProfile(u){
 
 async function fetchTweets(u){
   try{
-    const r=await fetch(`https://api.twitterapi.io/twitter/user/last_tweets?userName=${u}&count=20`,{headers:{'X-API-Key':TW_KEY}});
+    const r=await fetch(`/api/twitter?username=${u}&type=tweets`);
     if(!r.ok)return[];
     const d=await r.json();
     const list=d.tweets||d.data||[];
@@ -262,9 +262,8 @@ async function fetchTweets(u){
 }
 
 async function generateImage(prompt){
-  const body=JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['IMAGE','TEXT']}});
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GM_KEY}`,
-    {method:'POST',headers:{'Content-Type':'application/json'},body});
+  const body=JSON.stringify({prompt});
+  const r=await fetch('/api/image',{method:'POST',headers:{'Content-Type':'application/json'},body});
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error?.message||'Gemini error '+r.status);}
   const d=await r.json();
   for(const p of(d.candidates?.[0]?.content?.parts||[])){
