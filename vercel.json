@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/twitter", "destination": "/api/twitter.js" },
+    { "source": "/api/image", "destination": "/api/image.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
