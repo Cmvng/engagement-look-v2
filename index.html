@@ -250,14 +250,8 @@ async function fetchTweets(u){
     const r=await fetch(`/api/twitter?username=${u}&type=tweets`);
     if(!r.ok)return[];
     const d=await r.json();
-    const list=d.tweets||d.data||[];
-    const arr=Array.isArray(list)?list:(list.tweets||[]);
-    return arr.map(t=>({...t,
-      favorite_count:t.likeCount||t.favorite_count||0,
-      retweet_count:t.retweetCount||t.retweet_count||0,
-      reply_count:t.replyCount||t.reply_count||0,
-      view_count:t.viewCount||t.view_count||t.impressionCount||0
-    }));
+    const arr=d.tweets||d.data||[];
+    return Array.isArray(arr)?arr:(arr.tweets||[]);
   }catch{return[];}
 }
 
