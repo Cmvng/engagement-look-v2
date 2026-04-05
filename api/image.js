@@ -21,13 +21,22 @@ function post(path, body) {
   });
 }
 
+function getBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => { try { resolve(JSON.parse(body)); } catch { resolve({}); } });
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
-  const { prompt } = req.body || {};
+  const body = await getBody(req);
+  const { prompt } = body;
   if (!prompt) { res.status(400).json({ error: 'prompt required' }); return; }
 
   try {
