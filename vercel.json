@@ -1,7 +1,9 @@
 {
+  "functions": {
+    "api/twitter.js": { "runtime": "nodejs20.x" },
+    "api/image.js": { "runtime": "nodejs20.x" }
+  },
   "rewrites": [
-    { "source": "/api/twitter", "destination": "/api/twitter.js" },
-    { "source": "/api/image", "destination": "/api/image.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
