@@ -1,145 +1,224 @@
-const http = require('http');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-const url = require('url');
-
-const PORT = process.env.PORT || 8080;
-const TW_KEY = 'new1_6260bfd8c9ec4aff8d2a4ab5d0884706';
-const GM_KEY = 'AIzaSyAgQY2V9AO471_uQZO0-wsZSZ7-uGeVOWE';
-
-function httpsRequest(options, body) {
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch { resolve({ status: res.statusCode, body: data }); }
-      });
-    });
-    req.on('error', reject);
-    if (body) req.write(typeof body === 'string' ? body : JSON.stringify(body));
-    req.end();
-  });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engagement Look</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--surface:#111;--s2:#181818;--s3:#1f1f1f;
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);--b3:rgba(255,255,255,0.22);
+  --text:#efefef;--muted:#555;--m2:#888;--accent:#d4ff00;
+  --font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  --ripped:#d4ff00;--struggle:#ff8c00;--skinny:#38bdf8;--helpless:#a855f7;--old:#ef4444;
 }
-
-function setCORS(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+.wrap{max-width:680px;margin:0 auto;padding:2rem 1.25rem 6rem}
+.header{padding:2.5rem 0 2rem;border-bottom:0.5px solid var(--b1);margin-bottom:2rem;text-align:center}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--s2);border:0.5px solid var(--b2);border-radius:100px;padding:5px 14px;font-size:10px;font-family:var(--mono);color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.1rem}
+.dot{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+h1{font-size:clamp(2rem,9vw,3.5rem);font-weight:800;line-height:.95;letter-spacing:-.04em;margin-bottom:.7rem}
+h1 em{color:var(--accent);font-style:normal}
+.sub{font-family:var(--mono);font-size:.8rem;color:var(--m2);line-height:1.7;max-width:380px;margin:0 auto}
+.preview-label{font-size:10px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.8rem;text-align:center}
+.silhouettes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:2rem}
+.sil-card{background:var(--surface);border:0.5px solid var(--b1);border-radius:12px;padding:.9rem .5rem .8rem;text-align:center;transition:transform .2s,border-color .2s;cursor:default}
+.sil-card:hover{transform:translateY(-3px)}
+.sil-card.ripped{border-color:rgba(212,255,0,.2)}.sil-card.struggle{border-color:rgba(255,140,0,.2)}.sil-card.skinny{border-color:rgba(56,189,248,.2)}.sil-card.helpless{border-color:rgba(168,85,247,.2)}.sil-card.old{border-color:rgba(239,68,68,.2)}
+.sil-svg{display:block;margin:0 auto 6px;height:72px}
+.sil-range{font-size:9px;font-family:var(--mono);color:var(--m2);display:block;margin-bottom:2px}
+.sil-name{font-size:9px;font-weight:700;display:block}
+.sil-card.ripped .sil-name{color:var(--ripped)}.sil-card.struggle .sil-name{color:var(--struggle)}.sil-card.skinny .sil-name{color:var(--skinny)}.sil-card.helpless .sil-name{color:var(--helpless)}.sil-card.old .sil-name{color:var(--old)}
+.card{background:var(--surface);border:0.5px solid var(--b1);border-radius:14px;padding:1.4rem;margin-bottom:10px}
+.field{margin-bottom:1.1rem}.field:last-of-type{margin-bottom:0}
+.flabel{font-size:10px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;display:block}
+.input-row{position:relative;display:flex;align-items:center}
+.at{position:absolute;left:12px;font-family:var(--mono);font-size:13px;color:var(--muted);pointer-events:none;z-index:1}
+input[type=text]{width:100%;background:var(--s2);border:0.5px solid var(--b2);border-radius:9px;padding:12px 12px 12px 28px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+input[type=text]:focus{border-color:var(--accent)}
+input[type=text]::placeholder{color:var(--muted)}
+.upload-zone{border:1.5px dashed var(--b2);border-radius:10px;padding:1.5rem 1rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(212,255,0,.03)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:1.8rem;display:block;margin-bottom:.5rem}
+.upload-text{font-family:var(--mono);font-size:11px;color:var(--m2);line-height:1.6}
+.upload-text span{color:var(--accent)}
+.preview-thumb{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--b3);display:none;margin:0 auto .5rem}
+.preview-name{font-family:var(--mono);font-size:10px;color:var(--m2);display:none}
+.change-link{font-family:var(--mono);font-size:10px;color:var(--accent);text-decoration:underline;cursor:pointer;display:none;margin-top:4px}
+.btn{width:100%;background:var(--accent);color:#000;border:none;border-radius:9px;padding:14px;font-family:var(--font);font-size:15px;font-weight:800;letter-spacing:-.01em;cursor:pointer;transition:transform .15s,opacity .15s;margin-top:4px}
+.btn:hover{transform:translateY(-1px);opacity:.9}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.err{display:none;background:rgba(239,68,68,.08);border:0.5px solid rgba(239,68,68,.3);border-radius:9px;padding:10px 12px;font-family:var(--mono);font-size:12px;color:#f87171;margin-bottom:10px;line-height:1.5}
+.err.show{display:block}
+.loading{display:none;text-align:center;padding:4rem 1rem}.loading.show{display:block}
+.spinner{width:44px;height:44px;border:1.5px solid var(--b2);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 1.1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.l-label{font-family:var(--mono);font-size:12px;color:var(--m2)}
+.l-step{font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:5px;min-height:15px}
+.result{display:none}.result.show{display:block;animation:up .35s ease}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.profile-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:0.5px solid var(--b1);border-radius:14px;padding:1.1rem;margin-bottom:10px}
+.pfp{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1.5px solid var(--b2);flex-shrink:0}
+.pfp-fb{width:52px;height:52px;border-radius:50%;background:var(--s3);border:1.5px solid var(--b2);flex-shrink:0;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--m2)}
+.pinfo{flex:1;min-width:0}
+.pname{font-size:1rem;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phandle{font-family:var(--mono);font-size:11px;color:var(--m2)}
+.spill{flex-shrink:0;border-radius:100px;padding:5px 13px;font-family:var(--mono);font-size:12px}
+.verdict{border-radius:14px;padding:1.6rem 1.2rem;margin-bottom:10px;text-align:center}
+.v-emoji{font-size:3rem;display:block;margin-bottom:.6rem}
+.v-tag{font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--m2);margin-bottom:.3rem}
+.v-head{font-size:clamp(1.6rem,6vw,2.3rem);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-bottom:.5rem}
+.v-body{font-size:.82rem;font-family:var(--mono);color:var(--m2);line-height:1.65;max-width:380px;margin:0 auto 1rem}
+.v-score{display:inline-block;border-radius:100px;padding:5px 15px;font-family:var(--mono);font-size:11px}
+.emoji-card{background:var(--surface);border:0.5px solid var(--b1);border-radius:14px;padding:1.4rem;margin-bottom:10px}
+.emoji-card-label{font-size:10px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem;text-align:center}
+.emoji-pair{display:flex;align-items:center;justify-content:center;gap:16px}
+.emoji-side{text-align:center;flex:1}
+.emoji-side-label{font-size:9px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:10px}
+.emoji-pfp{width:100%;max-width:130px;aspect-ratio:1;border-radius:12px;object-fit:cover;border:0.5px solid var(--b2);display:block;margin:0 auto}
+.emoji-display{width:100%;max-width:130px;aspect-ratio:1;border-radius:12px;background:var(--s2);border:0.5px solid var(--b2);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;gap:6px}
+.big-emoji{font-size:3.5rem;line-height:1;display:block}
+.emoji-type-name{font-size:10px;font-family:var(--mono);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.emoji-arrow{font-size:1.4rem;color:var(--m2);flex-shrink:0;font-family:var(--mono)}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.mc{background:var(--surface);border:0.5px solid var(--b1);border-radius:12px;padding:.9rem}
+.mc-l{font-size:9px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.mc-v{font-size:1.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-bottom:2px}
+.mc-s{font-size:9px;font-family:var(--mono);color:var(--muted)}
+.breakdown{background:var(--surface);border:0.5px solid var(--b1);border-radius:14px;padding:1.1rem;margin-bottom:10px}
+.bd-title{font-size:10px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:1rem}
+.br{display:flex;align-items:center;gap:9px;margin-bottom:9px}.br:last-child{margin-bottom:0}
+.br-n{font-size:11px;font-family:var(--mono);color:var(--text);width:115px;flex-shrink:0}
+.br-t{flex:1;background:var(--s2);border-radius:100px;height:5px;overflow:hidden}
+.br-f{height:100%;border-radius:100px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.br-num{font-size:10px;font-family:var(--mono);color:var(--m2);width:28px;text-align:right;flex-shrink:0}
+.roast{background:var(--surface);border:0.5px solid var(--b1);border-radius:14px;padding:1.1rem;margin-bottom:10px}
+.roast-l{font-size:10px;font-family:var(--mono);color:var(--m2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem}
+.roast-b{font-family:var(--mono);font-size:.82rem;color:var(--text);line-height:1.75;font-style:italic}
+.btn-share{width:100%;background:transparent;color:var(--text);border:0.5px solid var(--b2);border-radius:9px;padding:12px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s,border-color .2s;margin-bottom:8px}
+.btn-share:hover{background:var(--s2);border-color:var(--accent)}
+.btn-reset{width:100%;background:transparent;color:var(--muted);border:none;padding:9px;font-family:var(--mono);font-size:11px;cursor:pointer;text-decoration:underline;transition:color .2s}
+.btn-reset:hover{color:var(--text)}
+.footer{border-top:0.5px solid var(--b1);margin-top:2rem;padding-top:1.5rem;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.9}
+@media(max-width:480px){.silhouettes{grid-template-columns:repeat(3,1fr)}.metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="header">
+  <div class="chip"><span class="dot"></span>engagement look · beta</div>
+  <h1>Your account<br>has a <em>body type.</em></h1>
+  <p class="sub">upload your photo + X username. we scan your engagement metrics and show what your account looks like as a body type.</p>
+</div>
+<p class="preview-label">the 5 body types</p>
+<div class="silhouettes">
+  <div class="sil-card ripped"><svg class="sil-svg" viewBox="0 0 60 90" fill="none"><ellipse cx="30" cy="10" rx="9" ry="9" fill="#d4ff00" opacity=".9"/><rect x="18" y="20" width="24" height="28" rx="5" fill="#d4ff00" opacity=".85"/><rect x="4" y="21" width="13" height="22" rx="5" fill="#d4ff00" opacity=".7"/><rect x="43" y="21" width="13" height="22" rx="5" fill="#d4ff00" opacity=".7"/><rect x="20" y="49" width="9" height="30" rx="4" fill="#d4ff00" opacity=".75"/><rect x="31" y="49" width="9" height="30" rx="4" fill="#d4ff00" opacity=".75"/></svg><span class="sil-range">75–100</span><span class="sil-name">Ripped</span></div>
+  <div class="sil-card struggle"><svg class="sil-svg" viewBox="0 0 60 90" fill="none"><ellipse cx="30" cy="10" rx="10" ry="10" fill="#ff8c00" opacity=".9"/><ellipse cx="30" cy="38" rx="16" ry="20" fill="#ff8c00" opacity=".8"/><rect x="5" y="22" width="11" height="18" rx="5" fill="#ff8c00" opacity=".65"/><rect x="44" y="22" width="11" height="18" rx="5" fill="#ff8c00" opacity=".65"/><rect x="19" y="55" width="10" height="28" rx="4" fill="#ff8c00" opacity=".7"/><rect x="31" y="55" width="10" height="28" rx="4" fill="#ff8c00" opacity=".7"/></svg><span class="sil-range">50–74</span><span class="sil-name">Struggling</span></div>
+  <div class="sil-card skinny"><svg class="sil-svg" viewBox="0 0 60 90" fill="none"><ellipse cx="30" cy="10" rx="7" ry="7" fill="#38bdf8" opacity=".9"/><rect x="23" y="18" width="14" height="26" rx="4" fill="#38bdf8" opacity=".8"/><rect x="10" y="20" width="12" height="16" rx="4" fill="#38bdf8" opacity=".6"/><rect x="38" y="20" width="12" height="16" rx="4" fill="#38bdf8" opacity=".6"/><rect x="22" y="45" width="7" height="32" rx="3" fill="#38bdf8" opacity=".7"/><rect x="31" y="45" width="7" height="32" rx="3" fill="#38bdf8" opacity=".7"/></svg><span class="sil-range">30–49</span><span class="sil-name">Skinny</span></div>
+  <div class="sil-card helpless"><svg class="sil-svg" viewBox="0 0 60 90" fill="none"><ellipse cx="30" cy="11" rx="8" ry="8" fill="#a855f7" opacity=".9"/><rect x="22" y="20" width="16" height="24" rx="4" fill="#a855f7" opacity=".75"/><rect x="9" y="23" width="12" height="14" rx="4" fill="#a855f7" opacity=".55" transform="rotate(12 9 23)"/><rect x="39" y="23" width="12" height="14" rx="4" fill="#a855f7" opacity=".55" transform="rotate(-12 39 23)"/><rect x="22" y="45" width="7" height="30" rx="3" fill="#a855f7" opacity=".65" transform="rotate(4 22 45)"/><rect x="31" y="46" width="7" height="30" rx="3" fill="#a855f7" opacity=".65" transform="rotate(-3 31 46)"/></svg><span class="sil-range">15–29</span><span class="sil-name">Helpless</span></div>
+  <div class="sil-card old"><svg class="sil-svg" viewBox="0 0 60 90" fill="none"><ellipse cx="30" cy="12" rx="9" ry="9" fill="#ef4444" opacity=".9"/><rect x="21" y="22" width="18" height="22" rx="5" fill="#ef4444" opacity=".75" transform="rotate(2 21 22)"/><rect x="8" y="25" width="12" height="15" rx="4" fill="#ef4444" opacity=".55" transform="rotate(15 8 25)"/><rect x="40" y="25" width="12" height="15" rx="4" fill="#ef4444" opacity=".55" transform="rotate(-15 40 25)"/><rect x="21" y="45" width="9" height="26" rx="4" fill="#ef4444" opacity=".6" transform="rotate(5 21 45)"/><rect x="30" y="46" width="9" height="26" rx="4" fill="#ef4444" opacity=".6" transform="rotate(-4 30 46)"/></svg><span class="sil-range">0–14</span><span class="sil-name">Ancient</span></div>
+</div>
+<div class="card" id="formCard">
+  <div class="field">
+    <span class="flabel">Your X username</span>
+    <div class="input-row"><span class="at">@</span><input type="text" id="username" placeholder="cmv_ng" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+  </div>
+  <div class="field">
+    <span class="flabel">Upload your photo <span style="color:var(--muted);font-size:9px;text-transform:none;letter-spacing:0">(face clearly visible)</span></span>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" onchange="handlePhoto(event)">
+      <img class="preview-thumb" id="previewThumb" src="" alt="">
+      <span class="upload-icon" id="uploadIcon">📸</span>
+      <p class="upload-text" id="uploadText">drag & drop or <span>click to browse</span><br>JPG · PNG · WEBP</p>
+      <p class="preview-name" id="previewName"></p>
+      <p class="change-link" id="changeLink" onclick="resetPhoto(event)">change photo</p>
+    </div>
+  </div>
+  <div class="err" id="errBox"></div>
+  <button class="btn" id="analyzeBtn" onclick="run()">Expose My Account</button>
+</div>
+<div class="loading" id="loadingBox">
+  <div class="spinner"></div>
+  <p class="l-label">scanning your account...</p>
+  <p class="l-step" id="loadStep">connecting to twitter</p>
+</div>
+<div class="result" id="resultBox">
+  <div class="profile-row">
+    <img class="pfp" id="rPfp" src="" alt="" onerror="this.style.display='none';document.getElementById('rPfpFb').style.display='flex'">
+    <div class="pfp-fb" id="rPfpFb"></div>
+    <div class="pinfo"><p class="pname" id="rName"></p><p class="phandle" id="rHandle"></p></div>
+    <div class="spill" id="rSpill"></div>
+  </div>
+  <div class="verdict" id="verdictCard">
+    <span class="v-emoji" id="vEmoji"></span>
+    <p class="v-tag" id="vTag"></p>
+    <h2 class="v-head" id="vHead"></h2>
+    <p class="v-body" id="vBody"></p>
+    <span class="v-score" id="vScore"></span>
+  </div>
+  <div class="emoji-card">
+    <p class="emoji-card-label">your engagement look</p>
+    <div class="emoji-pair">
+      <div class="emoji-side"><span class="emoji-side-label">your photo</span><img class="emoji-pfp" id="emojiOrigImg" src="" alt="your photo"></div>
+      <div class="emoji-arrow">→</div>
+      <div class="emoji-side">
+        <span class="emoji-side-label" id="emojiTypeLabel">your body type</span>
+        <div class="emoji-display" id="emojiDisplay"><span class="big-emoji" id="bigEmoji"></span><p class="emoji-type-name" id="emojiTypeName"></p></div>
+      </div>
+    </div>
+  </div>
+  <div class="metrics" id="metricsGrid"></div>
+  <div class="breakdown"><p class="bd-title">score breakdown</p><div id="barRows"></div></div>
+  <div class="roast"><p class="roast-l">the honest truth</p><p class="roast-b" id="roastText"></p></div>
+  <button class="btn-share" onclick="share()">Share My Engagement Look on X</button>
+  <button class="btn-reset" onclick="reset()">try another account</button>
+</div>
+<div class="footer"><p>engagement look · built for CT</p><p>powered by twitterapi.io</p></div>
+</div>
+<script>
+const TYPES={
+  ripped:{emoji:'💪',tag:'FIT & RIPPED',head:'Built Different',body:"You're not just posting — you're dominating. Real followers, real interactions, elite engagement. This is what a healthy CT account looks like.",color:'#d4ff00'},
+  struggle:{emoji:'🏋️',tag:'STRUGGLING TO STAY FIT',head:'Almost There',body:"Your engagement is decent but you're fighting yourself. Good numbers some days, bad others. The potential is clearly there — consistency is the missing piece.",color:'#ff8c00'},
+  skinny:{emoji:'🦴',tag:'LOOKING SKINNY',head:'Not Eating Well',body:"Your account is lean — but not in a good way. Low engagement, thin interactions, content barely gets picked up. Feed this account before it disappears.",color:'#38bdf8'},
+  helpless:{emoji:'😔',tag:'LOOKING HELPLESS',head:'Unhealthy & Lost',body:"This account looks rough. Metrics scattered, nothing landing, audience gone quiet. Engagement is weak and growth is stalled. Time for a serious reset.",color:'#a855f7'},
+  old:{emoji:'👴',tag:'ANCIENT & TIRED',head:'Looking Ancient',body:"These numbers don't add up. Bot-inflated followers, engagement patterns that make no sense. Something's off here.",color:'#ef4444'}
+};
+function getType(s){if(s>=75)return'ripped';if(s>=50)return'struggle';if(s>=30)return'skinny';if(s>=15)return'helpless';return'old';}
+function fmtNum(n){n=Number(n)||0;if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return Math.round(n).toString();}
+function calcScore(d){
+  const f=d.followers_count||0,fo=Math.max(d.following_count||1,1);
+  const aL=d.avgLikes||0,aR=d.avgRetweets||0,aRp=d.avgReplies||0,aV=Math.max(d.avgViews||1,1);
+  const eng=f>0?((aL+aR+aRp)/f)*100:0;
+  const eS=Math.min(eng/0.1,30),rS=Math.min((f/fo/5)*20,20),vS=Math.min(((aL+aR)/aV)*100*20,20);
+  const rpS=Math.min((aRp/Math.max(aL+aR,1))*200,15);
+  const aRaw=(aL/Math.max(f,1))*100;
+  const authS=aRaw<0.001?3:aRaw<0.01?8:aRaw<0.05?12:15;
+  const total=Math.min(Math.max(Math.round(eS*0.3+rS*0.2+vS*0.2+rpS*0.15+authS*0.15),0),100);
+  return{total,dims:{'Engagement rate':Math.round(Math.min(eS/30*100,100)),'Follow ratio':Math.round(Math.min(rS/20*100,100)),'View conversion':Math.round(Math.min(vS/20*100,100)),'Reply health':Math.round(Math.min(rpS/15*100,100)),'Authenticity':Math.round(authS/15*100)}};
 }
-
-function sendJSON(res, status, data) {
-  setCORS(res);
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(data));
+async function fetchProfile(u){
+  const r=await fetch(`https://api.twitterapi.io/twitter/user/info?userName=${u}`,{headers:{'X-API-Key':'new1_6260bfd8c9ec4aff8d2a4ab5d0884706'}});
+  if(!r.ok)throw new Error('Could not fetch @'+u);
+  const d=await r.json();
+  if(d.status==='error')throw new Error(d.msg||'User not found');
+  const raw=d.data||d;
+  return{...raw,followers_count:raw.followers||raw.followers_count||0,following_count:raw.following||raw.following_count||0,screen_name:raw.userName||raw.screen_name||u,profile_image_url_https:(raw.profilePicture||raw.profile_image_url_https||'').replace('_normal','_400x400')};
 }
-
-function getBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try { resolve(JSON.parse(body)); }
-      catch { resolve({}); }
-    });
-    req.on('error', reject);
-  });
+async function fetchTweets(u){
+  try{
+    const r=await fetch(`https://api.twitterapi.io/twitter/user/last_tweets?userName=${u}&count=20`,{headers:{'X-API-Key':'new1_6260bfd8c9ec4aff8d2a4ab5d0884706'}});
+    if(!r.ok)return[];
+    const d=await r.json();
+    const list=d.tweets||d.data||[];
+    const arr=Array.isArray(list)?list:(list.tweets||[]);
+    return arr.map(t=>({...t,favorite_count:t.likeCount||t.favorite_count||0,retweet_count:t.retweetCount||t.retweet_count||0,reply_count:t.replyCount||t.reply_count||0,view_count:t.viewCount||t.view_count||t.impressionCount||0}));
+  }catch{return[];}
 }
-
-const server = http.createServer(async (req, res) => {
-  const parsed = url.parse(req.url, true);
-  const pathname = parsed.pathname;
-
-  if (req.method === 'OPTIONS') {
-    setCORS(res);
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
-  // Twitter user profile
-  if (pathname === '/proxy/twitter/user' && req.method === 'GET') {
-    const username = parsed.query.userName;
-    if (!username) return sendJSON(res, 400, { error: 'username required' });
-    try {
-      const result = await httpsRequest({
-        hostname: 'api.twitterapi.io',
-        path: `/twitter/user/info?userName=${encodeURIComponent(username)}`,
-        method: 'GET',
-        headers: { 'X-API-Key': TW_KEY }
-      });
-      sendJSON(res, result.status, result.body);
-    } catch (err) { sendJSON(res, 500, { error: err.message }); }
-    return;
-  }
-
-  // Twitter recent tweets
-  if (pathname === '/proxy/twitter/tweets' && req.method === 'GET') {
-    const username = parsed.query.userName;
-    if (!username) return sendJSON(res, 400, { error: 'username required' });
-    try {
-      const result = await httpsRequest({
-        hostname: 'api.twitterapi.io',
-        path: `/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`,
-        method: 'GET',
-        headers: { 'X-API-Key': TW_KEY }
-      });
-      sendJSON(res, result.status, result.body);
-    } catch (err) { sendJSON(res, 500, { error: err.message }); }
-    return;
-  }
-
-  // Gemini Vision - face analysis
-  if (pathname === '/proxy/gemini/vision' && req.method === 'POST') {
-    try {
-      const body = await getBody(req);
-      const geminiBody = JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: body.mimeType, data: body.imageBase64 } },
-            { text: 'Describe this person\'s physical appearance in detail for use in an AI image generation prompt. Include: gender, approximate age range, skin tone and ethnicity, face shape, eye color and shape, nose shape, lip shape, hair color and style, any distinctive facial features. Be specific and detailed. Write only the description, no preamble.' }
-          ]
-        }]
-      });
-      const result = await httpsRequest({
-        hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GM_KEY}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(geminiBody) }
-      }, geminiBody);
-      sendJSON(res, result.status, result.body);
-    } catch (err) { sendJSON(res, 500, { error: err.message }); }
-    return;
-  }
-
-  // Gemini Imagen - portrait generation
-  if (pathname === '/proxy/gemini/imagen' && req.method === 'POST') {
-    try {
-      const body = await getBody(req);
-      const geminiBody = JSON.stringify({
-        contents: [{ parts: [{ text: body.prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-      });
-      const result = await httpsRequest({
-        hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GM_KEY}`,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(geminiBody) }
-      }, geminiBody);
-      sendJSON(res, result.status, result.body);
-    } catch (err) { sendJSON(res, 500, { error: err.message }); }
-    return;
-  }
-
-  // Serve HTML
-  fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
-    if (err) { res.writeHead(500); res.end('Error'); return; }
-    setCORS(res);
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(data);
-  });
-});
-
-server.listen(PORT, () => console.log(`Engagement Look running on port ${PORT}`));
+function getRoast(tk,d){
+  const n=(d.name||'you').split(' ')[0],f=fmtNum(d.followers_count);
+  const map={
+    ripped:[`${n} is running the game with ${f} followers who actually show up. Clean engagement, elite ratio. Whatever you're doing — don't stop.`],
+    struggle:[`${f} followers and fighting to stay consistent. The potenti
