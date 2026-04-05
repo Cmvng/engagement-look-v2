@@ -176,13 +176,9 @@ input[type=text]::placeholder{color:var(--muted)}
 
   <div class="img-card">
     <p class="img-card-label">your engagement · visualized</p>
-    <div class="img-wrap">
-      <div class="img-placeholder" id="imgPlaceholder">
-        <div class="img-spin"></div>
-        <p class="img-spin-text">generating your portrait...</p>
-      </div>
-      <img class="gen-img" id="genImg" src="" alt="engagement portrait">
-      <p class="img-err" id="imgErr"></p>
+    <div class="img-wrap" id="avatarWrap" style="max-width:220px;margin:0 auto;text-align:center">
+      <div id="avatarDisplay" style="font-size:7rem;line-height:1;margin-bottom:8px"></div>
+      <p id="avatarCaption" style="font-family:var(--mono);font-size:11px;color:var(--m2)"></p>
     </div>
   </div>
 
@@ -298,10 +294,10 @@ async function run(){
     setStep('calculating your engagement score...');
     let aL=0,aR=0,aRp=0,aV=0;
     if(tweets.length>0){
-      aL=tweets.reduce((s,t)=>s+(t.favorite_count||0),0)/tweets.length;
-      aR=tweets.reduce((s,t)=>s+(t.retweet_count||0),0)/tweets.length;
-      aRp=tweets.reduce((s,t)=>s+(t.reply_count||0),0)/tweets.length;
-      aV=tweets.reduce((s,t)=>s+(t.view_count||0),0)/tweets.length;
+      aL=tweets.reduce((s,t)=>s+(t.likeCount||t.favorite_count||0),0)/tweets.length;
+      aR=tweets.reduce((s,t)=>s+(t.retweetCount||t.retweet_count||0),0)/tweets.length;
+      aRp=tweets.reduce((s,t)=>s+(t.replyCount||t.reply_count||0),0)/tweets.length;
+      aV=tweets.reduce((s,t)=>s+(t.viewCount||t.view_count||t.impressionCount||0),0)/tweets.length;
     }
     const enriched={...profile,avgLikes:aL,avgRetweets:aR,avgReplies:aRp,avgViews:aV||profile.followers_count*0.04};
     const{total,dims}=calcScore(enriched);
