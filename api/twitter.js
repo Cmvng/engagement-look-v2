@@ -9,7 +9,7 @@ function get(path) {
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve({parseError: e.message, raw: data.substring(0,500)}); } });
     });
     req.on('error', reject);
     req.end();
@@ -27,10 +27,20 @@ module.exports = async (req, res) => {
   try {
     if (type === 'tweets') {
       const raw = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
-      // raw.data is the tweets array directly based on API response
-      // raw_response_keys: ["status","code","msg","data","has_next_page","next_cursor"]
-      const tweets = Array.isArray(raw.data) ? raw.data : [];
-      res.status(200).json({ tweets });
+      // Send back everything so we can debug
+      const tweets = Array.isArray(raw.data) ? raw.data : 
+                     Array.isArray(raw.tweets) ? raw.tweets :
+                     Array.isArray(raw) ? raw : [];
+      res.status(200).json({ 
+        tweets,
+        debug: {
+          keys: Object.keys(raw),
+          dataType: typeof raw.data,
+          dataIsArray: Array.isArray(raw.data),
+          dataLength: Array.isArray(raw.data) ? raw.data.length : 'not array',
+          tweetsKey: typeof raw.tweets,
+        }
+      });
     } else {
       const raw = await get(`/twitter/user/info?userName=${encodeURIComponent(username)}`);
       const user = raw.data || raw;
@@ -47,6 +57,6 @@ module.exports = async (req, res) => {
       });
     }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 };
