@@ -246,8 +246,7 @@ async function fetchTweets(u){
     const r=await fetch(`/api/twitter?username=${u}&type=tweets`);
     if(!r.ok)return[];
     const d=await r.json();
-    const arr=d.tweets||d.data||[];
-    return Array.isArray(arr)?arr:(arr.tweets||[]);
+    return Array.isArray(d.tweets)?d.tweets:[];
   }catch{return[];}
 }
 
@@ -294,10 +293,10 @@ async function run(){
     setStep('calculating your engagement score...');
     let aL=0,aR=0,aRp=0,aV=0;
     if(tweets.length>0){
-      aL=tweets.reduce((s,t)=>s+(t.likeCount||t.favorite_count||0),0)/tweets.length;
-      aR=tweets.reduce((s,t)=>s+(t.retweetCount||t.retweet_count||0),0)/tweets.length;
-      aRp=tweets.reduce((s,t)=>s+(t.replyCount||t.reply_count||0),0)/tweets.length;
-      aV=tweets.reduce((s,t)=>s+(t.viewCount||t.view_count||t.impressionCount||0),0)/tweets.length;
+      aL=tweets.reduce((s,t)=>s+(t.likeCount||0),0)/tweets.length;
+      aR=tweets.reduce((s,t)=>s+(t.retweetCount||0),0)/tweets.length;
+      aRp=tweets.reduce((s,t)=>s+(t.replyCount||0),0)/tweets.length;
+      aV=tweets.reduce((s,t)=>s+(t.viewCount||0),0)/tweets.length;
     }
     const enriched={...profile,avgLikes:aL,avgRetweets:aR,avgReplies:aRp,avgViews:aV||profile.followers_count*0.04};
     const{total,dims}=calcScore(enriched);
@@ -305,17 +304,11 @@ async function run(){
     renderResult(profile,enriched,total,typKey,dims);
     document.getElementById('loadingBox').classList.remove('show');
     document.getElementById('resultBox').classList.add('show');
-    // Generate funny portrait
-    generateImage(TYPES[typKey].prompt)
-      .then(url=>{
-        document.getElementById('imgPlaceholder').style.display='none';
-        const i=document.getElementById('genImg');i.src=url;i.style.display='block';
-      })
-      .catch(err=>{
-        document.getElementById('imgPlaceholder').style.display='none';
-        const e=document.getElementById('imgErr');
-        e.textContent='Image generation failed: '+err.message;e.style.display='block';
-      });
+    // Show avatar
+    const avatars={ripped:'💪🏋️‍♂️🔥',struggle:'😅🏃‍♂️💦',skinny:'🦴😨👻',helpless:'😔🪦💀',old:'👴😴⌛'};
+    const captions={ripped:'Absolute unit. Built different.',struggle:'At the gym but eating shawarma after.',skinny:'Last tweet was a cry for help.',helpless:'Will post for engagement.',old:'Account smells like 2009.'};
+    document.getElementById('avatarDisplay').textContent=avatars[typKey];
+    document.getElementById('avatarCaption').textContent=captions[typKey];
   }catch(err){
     document.getElementById('loadingBox').classList.remove('show');
     document.getElementById('formCard').style.display='block';
@@ -364,10 +357,8 @@ function reset(){
   document.getElementById('resultBox').classList.remove('show');
   document.getElementById('formCard').style.display='block';
   document.getElementById('analyzeBtn').disabled=false;
-  document.getElementById('genImg').style.display='none';
-  document.getElementById('genImg').src='';
-  document.getElementById('imgPlaceholder').style.display='flex';
-  document.getElementById('imgErr').style.display='none';
+  document.getElementById('avatarDisplay').textContent='';
+  document.getElementById('avatarCaption').textContent='';
   document.getElementById('username').value='';
   hideErr();window.scrollTo({top:0,behavior:'smooth'});
 }
