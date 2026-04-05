@@ -244,10 +244,14 @@ async function fetchProfile(u){
 async function fetchTweets(u){
   try{
     const r=await fetch(`/api/twitter?username=${u}&type=tweets`);
-    if(!r.ok)return[];
-    const d=await r.json();
+    console.log('TWEET FETCH STATUS:', r.status, r.url);
+    const text=await r.text();
+    console.log('RAW RESPONSE (first 200):', text.substring(0,200));
+    const d=JSON.parse(text);
+    console.log('PARSED KEYS:', Object.keys(d));
+    console.log('TWEETS ARRAY LENGTH:', d.tweets ? d.tweets.length : 'no tweets key');
     return Array.isArray(d.tweets)?d.tweets:[];
-  }catch{return[];}
+  }catch(e){console.log('FETCH ERROR:',e);return[];}
 }
 
 async function generateImage(prompt){
