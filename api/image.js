@@ -13,7 +13,7 @@ function post(path, body) {
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+      res.on('end', () => { try { resolve({ status: res.statusCode, body: JSON.parse(data) }); } catch { resolve({ status: res.statusCode, body: data }); } });
     });
     req.on('error', reject);
     req.write(bodyStr);
@@ -39,13 +39,26 @@ module.exports = async (req, res) => {
   const { prompt } = body;
   if (!prompt) { res.status(400).json({ error: 'prompt required' }); return; }
 
-  try {
-    const data = await post(
-      `/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GM_KEY}`,
-      { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }
-    );
-    res.status(200).json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  // Try multiple models in order
+  const models = [
+    'gemini-2.0-flash-preview-image-generation',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-flash'
+  ];
+
+  for (const model of models) {
+    try {
+      const result = await post(
+        `/v1beta/models/${model}:generateContent?key=${GM_KEY}`,
+        { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE', 'TEXT'] } }
+      );
+      if (result.status === 200) {
+        res.status(200).json(result.body);
+        return;
+      }
+    } catch (err) {
+      continue;
+    }
   }
+  res.status(500).json({ error: 'All Gemini models failed. Check API key quota.' });
 };
