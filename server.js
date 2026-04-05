@@ -105,7 +105,7 @@ const server = http.createServer(async (req, res) => {
       });
       const result = await httpsRequest({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GM_KEY}`,
+        path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GM_KEY}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(geminiBody) }
       }, geminiBody);
