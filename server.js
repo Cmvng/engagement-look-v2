@@ -1,0 +1,145 @@
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const url = require('url');
+
+const PORT = process.env.PORT || 8080;
+const TW_KEY = 'new1_6260bfd8c9ec4aff8d2a4ab5d0884706';
+const GM_KEY = 'AIzaSyAgQY2V9AO471_uQZO0-wsZSZ7-uGeVOWE';
+
+function httpsRequest(options, body) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+        catch { resolve({ status: res.statusCode, body: data }); }
+      });
+    });
+    req.on('error', reject);
+    if (body) req.write(typeof body === 'string' ? body : JSON.stringify(body));
+    req.end();
+  });
+}
+
+function setCORS(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function sendJSON(res, status, data) {
+  setCORS(res);
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(data));
+}
+
+function getBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); }
+      catch { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  const parsed = url.parse(req.url, true);
+  const pathname = parsed.pathname;
+
+  if (req.method === 'OPTIONS') {
+    setCORS(res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  // Twitter user profile
+  if (pathname === '/proxy/twitter/user' && req.method === 'GET') {
+    const username = parsed.query.userName;
+    if (!username) return sendJSON(res, 400, { error: 'username required' });
+    try {
+      const result = await httpsRequest({
+        hostname: 'api.twitterapi.io',
+        path: `/twitter/user/info?userName=${encodeURIComponent(username)}`,
+        method: 'GET',
+        headers: { 'X-API-Key': TW_KEY }
+      });
+      sendJSON(res, result.status, result.body);
+    } catch (err) { sendJSON(res, 500, { error: err.message }); }
+    return;
+  }
+
+  // Twitter recent tweets
+  if (pathname === '/proxy/twitter/tweets' && req.method === 'GET') {
+    const username = parsed.query.userName;
+    if (!username) return sendJSON(res, 400, { error: 'username required' });
+    try {
+      const result = await httpsRequest({
+        hostname: 'api.twitterapi.io',
+        path: `/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`,
+        method: 'GET',
+        headers: { 'X-API-Key': TW_KEY }
+      });
+      sendJSON(res, result.status, result.body);
+    } catch (err) { sendJSON(res, 500, { error: err.message }); }
+    return;
+  }
+
+  // Gemini Vision - face analysis
+  if (pathname === '/proxy/gemini/vision' && req.method === 'POST') {
+    try {
+      const body = await getBody(req);
+      const geminiBody = JSON.stringify({
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: body.mimeType, data: body.imageBase64 } },
+            { text: 'Describe this person\'s physical appearance in detail for use in an AI image generation prompt. Include: gender, approximate age range, skin tone and ethnicity, face shape, eye color and shape, nose shape, lip shape, hair color and style, any distinctive facial features. Be specific and detailed. Write only the description, no preamble.' }
+          ]
+        }]
+      });
+      const result = await httpsRequest({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${GM_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(geminiBody) }
+      }, geminiBody);
+      sendJSON(res, result.status, result.body);
+    } catch (err) { sendJSON(res, 500, { error: err.message }); }
+    return;
+  }
+
+  // Gemini Imagen - portrait generation
+  if (pathname === '/proxy/gemini/imagen' && req.method === 'POST') {
+    try {
+      const body = await getBody(req);
+      const geminiBody = JSON.stringify({
+        contents: [{ parts: [{ text: body.prompt }] }],
+        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
+      });
+      const result = await httpsRequest({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GM_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(geminiBody) }
+      }, geminiBody);
+      sendJSON(res, result.status, result.body);
+    } catch (err) { sendJSON(res, 500, { error: err.message }); }
+    return;
+  }
+
+  // Serve HTML
+  fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
+    if (err) { res.writeHead(500); res.end('Error'); return; }
+    setCORS(res);
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(data);
+  });
+});
+
+server.listen(PORT, () => console.log(`Engagement Look running on port ${PORT}`));
