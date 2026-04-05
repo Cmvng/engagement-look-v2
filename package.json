@@ -2,9 +2,9 @@
   "name": "engagement-look",
   "version": "1.0.0",
   "scripts": {
-    "start": "npx serve . -l ${PORT:-3000}"
+    "start": "serve . -l $PORT"
   },
   "dependencies": {
-    "serve": "^14.0.0"
+    "serve": "^14.2.0"
   }
 }
