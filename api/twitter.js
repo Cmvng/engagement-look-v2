@@ -1,13 +1,10 @@
 const https = require('https');
-
 const TW_KEY = 'new1_6260bfd8c9ec4aff8d2a4ab5d0884706';
 
 function get(path) {
   return new Promise((resolve, reject) => {
     const req = https.request({
-      hostname: 'api.twitterapi.io',
-      path,
-      method: 'GET',
+      hostname: 'api.twitterapi.io', path, method: 'GET',
       headers: { 'X-API-Key': TW_KEY }
     }, (res) => {
       let data = '';
@@ -29,31 +26,25 @@ module.exports = async (req, res) => {
 
   try {
     if (type === 'tweets') {
-      const data = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
-      // Normalize tweet fields
-      const raw = data.tweets || data.data || data || [];
-      const arr = Array.isArray(raw) ? raw : (raw.tweets || []);
-      const normalized = arr.map(t => ({
-        ...t,
-        favorite_count: t.likeCount || t.like_count || t.favorite_count || 0,
-        retweet_count: t.retweetCount || t.retweet_count || 0,
-        reply_count: t.replyCount || t.reply_count || 0,
-        view_count: t.viewCount || t.view_count || t.impressionCount || 0,
-      }));
-      res.status(200).json({ tweets: normalized });
+      const raw = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
+      // API returns tweets in raw.data array
+      const arr = raw.data || raw.tweets || [];
+      const tweets = Array.isArray(arr) ? arr : [];
+      res.status(200).json({ tweets });
     } else {
-      const data = await get(`/twitter/user/info?userName=${encodeURIComponent(username)}`);
-      const raw = data.data || data;
-      // Normalize profile fields
-      const normalized = {
-        ...raw,
-        followers_count: raw.followers || raw.followers_count || 0,
-        following_count: raw.following || raw.following_count || 0,
-        screen_name: raw.userName || raw.screen_name || username,
-        profile_image_url_https: (raw.profilePicture || raw.profile_image_url_https || '').replace('_normal', '_400x400'),
-        name: raw.name || username,
-      };
-      res.status(200).json({ status: 'success', data: normalized });
+      const raw = await get(`/twitter/user/info?userName=${encodeURIComponent(username)}`);
+      const user = raw.data || raw;
+      res.status(200).json({
+        status: 'success',
+        data: {
+          ...user,
+          followers_count: user.followers || user.followers_count || 0,
+          following_count: user.following || user.following_count || 0,
+          screen_name: user.userName || user.screen_name || username,
+          profile_image_url_https: (user.profilePicture || '').replace('_normal', '_400x400'),
+          name: user.name || username,
+        }
+      });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
