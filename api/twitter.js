@@ -9,7 +9,7 @@ function get(path) {
     }, (res) => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve({parseError: e.message, raw: data.substring(0,500)}); } });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve({}); } });
     });
     req.on('error', reject);
     req.end();
@@ -27,18 +27,20 @@ module.exports = async (req, res) => {
   try {
     if (type === 'tweets') {
       const raw = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
-      // Send back everything so we can debug
-      const tweets = Array.isArray(raw.data) ? raw.data : 
-                     Array.isArray(raw.tweets) ? raw.tweets :
-                     Array.isArray(raw) ? raw : [];
-      res.status(200).json({ 
+      // raw.data is an object - inspect its keys
+      const dataKeys = raw.data ? Object.keys(raw.data) : [];
+      // tweets are likely in raw.data.tweets
+      const tweets = Array.isArray(raw.data) ? raw.data :
+                     Array.isArray(raw.data && raw.data.tweets) ? raw.data.tweets :
+                     Array.isArray(raw.tweets) ? raw.tweets : [];
+      res.status(200).json({
         tweets,
         debug: {
-          keys: Object.keys(raw),
+          dataKeys,
           dataType: typeof raw.data,
-          dataIsArray: Array.isArray(raw.data),
-          dataLength: Array.isArray(raw.data) ? raw.data.length : 'not array',
-          tweetsKey: typeof raw.tweets,
+          dataTweetsType: raw.data ? typeof raw.data.tweets : 'no data',
+          dataTweetsIsArray: raw.data ? Array.isArray(raw.data.tweets) : false,
+          dataTweetsLength: (raw.data && Array.isArray(raw.data.tweets)) ? raw.data.tweets.length : 0,
         }
       });
     } else {
@@ -57,6 +59,6 @@ module.exports = async (req, res) => {
       });
     }
   } catch (err) {
-    res.status(500).json({ error: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
   }
 };
