@@ -27,22 +27,9 @@ module.exports = async (req, res) => {
   try {
     if (type === 'tweets') {
       const raw = await get(`/twitter/user/last_tweets?userName=${encodeURIComponent(username)}&count=20`);
-      // raw.data is an object - inspect its keys
-      const dataKeys = raw.data ? Object.keys(raw.data) : [];
-      // tweets are likely in raw.data.tweets
-      const tweets = Array.isArray(raw.data) ? raw.data :
-                     Array.isArray(raw.data && raw.data.tweets) ? raw.data.tweets :
-                     Array.isArray(raw.tweets) ? raw.tweets : [];
-      res.status(200).json({
-        tweets,
-        debug: {
-          dataKeys,
-          dataType: typeof raw.data,
-          dataTweetsType: raw.data ? typeof raw.data.tweets : 'no data',
-          dataTweetsIsArray: raw.data ? Array.isArray(raw.data.tweets) : false,
-          dataTweetsLength: (raw.data && Array.isArray(raw.data.tweets)) ? raw.data.tweets.length : 0,
-        }
-      });
+      // Structure: raw.data.tweets is the array
+      const tweets = (raw.data && Array.isArray(raw.data.tweets)) ? raw.data.tweets : [];
+      res.status(200).json({ tweets });
     } else {
       const raw = await get(`/twitter/user/info?userName=${encodeURIComponent(username)}`);
       const user = raw.data || raw;
